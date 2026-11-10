@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FoodSupply – Sistem Distribusi Pangan Cerdas</title>
+  <meta name="description" content="Platform Digital Smart City untuk Pemantauan Stok, Harga, dan Distribusi Bahan Pangan Berbasis Rust dan PostgreSQL">
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- Tailwind CSS CDN with Custom Theme Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              primary: '#004e34',
+              secondary: '#0f6848',
+              light: '#e6f0ec',
+              hover: '#003825'
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Leaflet CSS for GIS Mapping -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+  <!-- Custom Stylesheet (Enhanced with WCAG 2.1 AA Contrast) -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-role="admin">
+
+  <!-- ================= TOPBAR / HEADER IDENTITAS ================= -->
+  <header class="app-header">
+    <div class="header-left">
+      <button id="sidebarToggleBtn" class="icon-btn-toggle" aria-label="Buka/Tutup Navigasi Menu" title="Buka/Tutup Navigasi">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Institutional Logos -->
+      <div class="institution-branding">
+        <!-- Logo Pemda -->
+        <div class="brand-logo pemda-logo" title="Logo Resmi Pemerintah Daerah">
+          <svg class="emblem-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Emblem Pemda">
+            <path d="M50 5 L85 22 V55 C85 75 50 95 50 95 C50 95 15 75 15 55 V22 L50 5Z" fill="#004e34" stroke="#f59e0b" stroke-width="3"/>
+            <circle cx="50" cy="45" r="22" fill="#ffffff"/>
+            <path d="M50 30 L54 40 L64 41 L56 48 L59 58 L50 52 L41 58 L44 48 L36 41 L46 40 Z" fill="#f59e0b"/>
+            <path d="M35 60 C42 66 58 66 65 60" stroke="#004e34" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <div class="logo-meta">
+            <span class="sub-text">Pemerintah Daerah</span>
+            <span class="main-text">Dinas Ketahanan Pangan</span>
+          </div>
+        </div>
+
+        <div class="brand-divider"></div>
+
+        <!-- Logo Universitas Teknokrat Indonesia -->
+        <div class="brand-logo uti-logo" title="Logo Universitas Teknokrat Indonesia">
+          <svg class="emblem-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Logo UTI">
+            <rect x="12" y="12" width="76" height="76" rx="14" fill="#b91c1c" stroke="#f59e0b" stroke-width="3"/>
+            <path d="M50 20 L25 78 H38 L43 65 H57 L62 78 H75 L50 20Z M50 38 L54 55 H46 L50 38Z" fill="#ffffff"/>
+            <circle cx="50" cy="85" r="4" fill="#f59e0b"/>
+          </svg>
+          <div class="logo-meta">
+            <span class="sub-text">Mitra Akademik</span>
+            <span class="main-text">Universitas Teknokrat Indonesia</span>
+          </div>
+        </div>
+
+        <div class="brand-divider hide-mobile"></div>
+
+        <!-- App Brand -->
+        <div class="app-title-badge hide-mobile">
+          <span class="app-name">FoodSupply</span>
+          <span class="app-badge">Smart City</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <!-- Role Switcher Pill for Demo -->
+      <div class="role-switcher-wrapper">
+        <label for="userRoleSelector" class="role-selector-label">
+          <i class="fa-solid fa-user-gear"></i> <span class="hide-mobile">Peran Akun:</span>
+        </label>
+        <select id="userRoleSelector" class="role-select-input" aria-label="Pilih Peran Pengguna">
+          <option value="admin">Administrator</option>
+          <option value="pemda">Pemerintah Daerah (Pemda)</option>
+          <option value="distributor">Distributor Pangan</option>
+          <option value="pedagang">Pedagang Pasar</option>
+          <option value="petani">Petani / Produsen</option>
+          <option value="masyarakat">Masyarakat (Publik)</option>
+        </select>
+      </div>
+
+      <!-- Quick Action Notifications -->
+      <div class="header-notification dropdown-container">
+        <button id="notificationBtn" class="icon-btn" aria-label="Buka Notifikasi" aria-expanded="false" title="Pusat Notifikasi">
+          <i class="fa-solid fa-bell"></i>
+          <span class="badge-dot" id="notifBadgeCount">3</span>
+        </button>
+        <div class="dropdown-panel notif-panel" id="notifPanel" role="dialog" aria-labelledby="notifHeaderTitle">
+          <div class="dropdown-header">
+            <h4 id="notifHeaderTitle">Pemberitahuan Sistem</h4>
+            <button class="text-btn" id="markAllReadBtn" aria-label="Tandai Semua Dibaca">Tandai Dibaca</button>
+          </div>
+          <ul class="notif-list" id="quickNotifList">
+            <!-- Populated via JS -->
+          </ul>
+          <div class="dropdown-footer">
+            <a href="#notifikasi" class="nav-link-trigger text-brand-secondary font-bold hover:underline" data-target="notifikasi">Lihat Semua Notifikasi &rarr;</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Profile Header -->
+      <div class="user-profile-badge" id="headerProfileBadge" title="Profil Pengguna">
+        <div class="avatar-circle" id="userAvatar">YA</div>
+        <div class="user-meta hide-mobile">
+          <span class="user-name" id="userNameLabel">Yolanda Anderi</span>
+          <span class="user-role-badge" id="userRoleBadge">Super Admin</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= LAYOUT UTAMA (SIDEBAR + CONTENT) ================= -->
+  <div class="app-container">
+    
+    <!-- SIDEBAR NAVIGASI DESKTOP -->
+    <aside class="app-sidebar" id="appSidebar" aria-label="Navigasi Utama">
+      <div class="sidebar-user-card">
+        <div class="avatar-lg" id="sidebarAvatar">YA</div>
+        <div class="sidebar-user-info">
+          <h4 id="sidebarUserName">Yolanda Anderi</h4>
+          <span class="badge-role-tag" id="sidebarRoleTag">Administrator</span>
+          <span class="badge-tech-tag"><i class="fa-solid fa-server"></i> Rust + PostgreSQL</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <div class="menu-section-label">NAVIGASI UTAMA</div>
+        <ul class="nav-links" id="sidebarNavLinks">
+          <li class="nav-item">
+            <a href="#dashboard" class="nav-link active" data-target="dashboard" id="nav-dashboard">
+              <i class="fa-solid fa-chart-pie"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li class="nav-item role-nav" data-allowed="masyarakat,admin,pemda">
+            <a href="#landing" class="nav-link" data-target="landing" id="nav-landing">
+              <i class="fa-solid fa-house-chimney"></i>
+              <span>Beranda Publik</span>
+            </a>
+          </li>
+          <li class="nav-item role-nav" data-allowed="admin">
+            <a href="#manajemen-pengguna" class="nav-link" data-target="manajemen-pengguna" id="nav-manajemen-pengguna">
+              <i class="fa-solid fa-users-gear"></i>
+              <span>Manajemen Akun</span>
+            </a>
+          </li>
+          <li class="nav-item role-nav" data-allowed="admin,pemda">
+            <a href="#data-komoditas" class="nav-link" data-target="data-komoditas" id="nav-data-komoditas">
+              <i class="fa-solid fa-wheat-awn"></i>
+              <span>Data Komoditas</span>
+            </a>
+          </li>
+          <li class="nav-item role-nav" data-allowed="admin,pemda,distributor,pedagang">
+            <a href="#pemantauan-stok" class="nav-link" data-target="pemantauan-stok" id="nav-pemantauan-stok">
+              <i class="fa-solid fa-boxes-stacked"></i>
+              <span>Monitoring Stok</span>
+            </a>
+          </li>
+          <li class="nav-item role-nav" data-allowed="admin,pemda,pedagang,masyarakat">
+            <a href="#informasi-harga" class="nav-link" data-target="informasi-harga" id="nav-informasi-harga">
+              <i class="fa-solid fa-tags"></i>
+              <span>Informasi Harga</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#peta-gis" class="nav-link" data-target="peta-gis" id="nav-peta-gis">
+              <i class="fa-solid fa-map-location-dot"></i>
+              <span>Peta Lokasi GIS</span>
+            </a>
+          </li>
+          <li class="nav-item role-nav" data-allowed="admin,pemda">
+            <a href="#prediksi-pangan" class="nav-link" data-target="prediksi-pangan" id="nav-prediksi-pangan">
+              <i class="fa-solid fa-brain"></i>
+              <span>Prediksi AI Pangan</span>
+            </a>
+          </li>
+          <li class="nav-item role-nav" data-allowed="admin,pemda,distributor,petani">
+            <a href="#tracking-distribusi" class="nav-link" data-target="tracking-distribusi" id="nav-tracking-distribusi">
+              <i class="fa-solid fa-truck-fast"></i>
+              <span>Tracking Distribusi</span>
+            </a>
+          </li>
+          <li class="nav-item role-nav" data-allowed="petani">
+            <a href="#produksi-petani" class="nav-link" data-target="produksi-petani" id="nav-produksi-petani">
+              <i class="fa-solid fa-tractor"></i>
+              <span>Hasil Panen & Produksi</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#notifikasi" class="nav-link" data-target="notifikasi" id="nav-notifikasi">
+              <i class="fa-solid fa-bell"></i>
+              <span>Pusat Notifikasi</span>
+              <span class="nav-counter" id="sidebarNotifCounter">3</span>
+            </a>
+          </li>
+          <li class="nav-item role-nav" data-allowed="admin,pemda">
+            <a href="#laporan-pangan" class="nav-link" data-target="laporan-pangan" id="nav-laporan-pangan">
+              <i class="fa-solid fa-file-invoice"></i>
+              <span>Laporan & Rekapitulasi</span>
+            </a>
+          </li>
+        </ul>
+
+        <div class="menu-section-label">PENGATURAN</div>
+        <ul class="nav-links">
+          <li class="nav-item">
+            <a href="#authModal" class="nav-link" id="authBtnTrigger">
+              <i class="fa-solid fa-right-to-bracket"></i>
+              <span>Login / Ganti Akun</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#systemInfoModal" class="nav-link" id="systemInfoTrigger">
+              <i class="fa-solid fa-circle-info"></i>
+              <span>Arsitektur Sistem</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- Sidebar Status Card -->
+      <div class="sidebar-status-box">
+        <div class="status-indicator online">
+          <span class="status-dot"></span>
+          <span>Backend Rust: <strong>Online</strong></span>
+        </div>
+        <div class="status-sub">PostgreSQL Connected (PostGIS)</div>
+      </div>
+    </aside>
+
+    <!-- CONTENT WRAPPER -->
+    <main class="app-main-content" id="mainContent" role="main">
+
+      <!-- ================= 1. HALAMAN LANDING PAGE (BERANDA PUBLIK) ================= -->
+      <section id="landing" class="view-section">
+        <div class="landing-hero">
+          <div class="hero-badge"><i class="fa-solid fa-shield-halved"></i> Ketahanan Pangan Smart City 2026</div>
+          <h1 class="hero-title">Sistem Distribusi Pangan Cerdas & Terintegrasi</h1>
+          <p class="hero-desc">
+            Platform digital pemantauan ketersediaan stok, pergerakan harga komoditas, pemetaan pasar GIS, dan distribusi bahan pokok dari hulu (petani) hingga hilir (pasar dan masyarakat).
+          </p>
+          <div class="hero-actions">
+            <button class="btn btn-primary btn-lg" onclick="switchRole('masyarakat')">
+              <i class="fa-solid fa-magnifying-glass"></i> Cek Harga Pasar Hari Ini
+            </button>
+            <button class="btn btn-outline btn-lg" onclick="switchTab('dashboard')">
+              <i class="fa-solid fa-gauge-high"></i> Masuk ke Dashboard
+            </button>
+          </div>
+          
+          <div class="hero-stats-grid">
+            <div class="hero-stat-card">
+              <div class="stat-num" id="heroCommodityCount">10</div>
+              <div class="stat-text">Komoditas Pokok Terpantau</div>
+            </div>
+            <div class="hero-stat-card">
+              <div class="stat-num" id="heroMarketCount">4</div>
+              <div class="stat-text">Pasar Tradisional Terhubung</div>
+            </div>
+            <div class="hero-stat-card">
+              <div class="stat-num" id="heroDistributorCount">4</div>
+              <div class="stat-text">Distributor & Sentra Tani</div>
+            </div>
+            <div class="hero-stat-card">
+              <div class="stat-num">Real-Time</div>
+              <div class="stat-text">Update Data Berbasis Rust</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-showcase">
+          <h2 class="section-heading text-center">Keunggulan FoodSupply Smart City</h2>
+          <div class="feature-grid">
+            <div class="feature-card">
+              <div class="feature-icon"><i class="fa-solid fa-chart-line"></i></div>
+              <h3>Transparansi Harga Pangan</h3>
+              <p>Mencegah inflasi dan spekulasi harga pangan dengan pencatatan harga berkala langsung dari pasar tradisional.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon"><i class="fa-solid fa-map-location"></i></div>
+              <h3>Pemetaan GIS Interaktif</h3>
+              <p>Menemukan lokasi pasar terdekat, gudang distributor, dan lumbung pangan dengan akurasi koordinat geografis PostGIS.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon"><i class="fa-solid fa-brain"></i></div>
+              <h3>Peringatan Dini & Prediksi AI</h3>
+              <p>Mendeteksi potensi kelangkaan komoditas sebelum terjadi, memungkinkan intervensi operasi pasar lebih dini.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon"><i class="fa-solid fa-truck-ramp-box"></i></div>
+              <h3>Tracking Distribusi Logistik</h3>
+              <p>Pelacakan armada pasokan pangan mulai dari petani ke distributor hingga ke kios pedagang pasar.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. DASHBOARD UTAMA (ADAPTIF 6 PERAN) ================= -->
+      <section id="dashboard" class="view-section active">
+        <!-- Dashboard Header & Role Alert -->
+        <div class="dashboard-header-banner">
+          <div>
+            <h2 class="page-title" id="dashboardGreeting">Dashboard Pemantauan Pangan</h2>
+            <p class="page-subtitle" id="dashboardSubtitle">Ringkasan operasional stok, harga komoditas, dan pergerakan distribusi.</p>
+          </div>
+          <div class="dashboard-action-group">
+            <span class="live-clock-badge" id="liveClockBadge"><i class="fa-regular fa-clock"></i> Memuat waktu...</span>
+            <button class="btn btn-secondary btn-sm" id="btnRefreshData"><i class="fa-solid fa-rotate"></i> Sinkronisasi Data</button>
+          </div>
+        </div>
+
+        <!-- Role Context Banner -->
+        <div class="role-context-alert" id="roleContextAlert">
+          <i class="fa-solid fa-circle-info text-brand-primary text-base"></i>
+          <span id="roleContextMessage">Menampilkan tampilan dashboard Administrator sistem.</span>
+        </div>
+
+        <!-- SUMMARY CARDS (DYNAMIC) -->
+        <div class="kpi-grid" id="kpiContainer">
+          <!-- Populated by JavaScript according to active role -->
+        </div>
+
+        <!-- DASHBOARD CHARTS ROW -->
+        <div class="dashboard-charts-grid">
+          <!-- Chart 1: Line Chart (Tren Harga Komoditas) -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3><i class="fa-solid fa-arrow-trend-up"></i> Tren Rata-Rata Harga Pangan (Rp / Kg)</h3>
+                <span class="card-sub">Line Chart: Pergerakan 7 hari terakhir di pasar rakyat</span>
+              </div>
+              <div class="card-tools">
+                <select id="chartCommoditySelect" class="form-select-sm" aria-label="Filter Komoditas Grafik">
+                  <option value="all">Semua Komoditas</option>
+                  <option value="Beras Premium">Beras Premium</option>
+                  <option value="Cabai Rawit Merah">Cabai Rawit Merah</option>
+                  <option value="Minyak Goreng Kemasan">Minyak Goreng Kemasan</option>
+                </select>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="chart-wrapper">
+                <canvas id="priceTrendChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart 2: Doughnut Chart (Komposisi Ketersediaan Stok) -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3><i class="fa-solid fa-chart-pie"></i> Komposisi Stok Komoditas Pangan</h3>
+                <span class="card-sub">Doughnut Chart: Distribusi volume stok pangan riil (Ton)</span>
+              </div>
+              <div class="card-tools">
+                <span class="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-full border border-emerald-200">
+                  <i class="fa-solid fa-boxes-stacked"></i> Live Data
+                </span>
+              </div>
+            </div>
+            <div class="card-body flex items-center justify-center">
+              <div class="chart-wrapper doughnut-chart-wrapper">
+                <canvas id="stockLevelChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- QUICK TABLE / RECENT LOGS SECTION -->
+        <div class="dashboard-tables-grid">
+          <!-- Tabel Status Komoditas Terkini -->
+          <div class="card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-triangle-exclamation"></i> Status Peringatan Stok Kritis & Menipis</h3>
+              <a href="#pemantauan-stok" class="card-link nav-link-trigger font-bold text-brand-secondary" data-target="pemantauan-stok">Lihat Semua Stok &rarr;</a>
+            </div>
+            <div class="card-body table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Komoditas</th>
+                    <th>Lokasi Fasilitas</th>
+                    <th>Stok Tersedia</th>
+                    <th>Batas Cadangan</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="quickStockAlertTable">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tabel Distribusi Berjalan -->
+          <div class="card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-truck"></i> Pengiriman Distribusi Aktif</h3>
+              <a href="#tracking-distribusi" class="card-link nav-link-trigger font-bold text-brand-secondary" data-target="tracking-distribusi">Pelacakan Penuh &rarr;</a>
+            </div>
+            <div class="card-body table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>No. DO</th>
+                    <th>Komoditas</th>
+                    <th>Volume</th>
+                    <th>Tujuan</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="quickDistributionTable">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3. MANAJEMEN PENGGUNA (ADMIN ONLY) ================= -->
+      <section id="manajemen-pengguna" class="view-section">
+        <div class="view-header">
+          <div>
+            <h2 class="page-title">Manajemen Akun & Hak Akses Pengguna</h2>
+            <p class="page-subtitle">Kelola otorisasi 6 jenis entitas sistem (Admin, Pemda, Distributor, Pedagang, Petani, Masyarakat).</p>
+          </div>
+          <button class="btn btn-primary" id="btnOpenUserModal"><i class="fa-solid fa-user-plus"></i> Tambah Pengguna</button>
+        </div>
+
+        <div class="card">
+          <div class="table-filter-bar">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="userSearchInput" placeholder="Cari nama atau email pengguna...">
+            </div>
+            <div class="filter-controls">
+              <select id="userRoleFilter" class="form-select" aria-label="Filter Peran Pengguna">
+                <option value="all">Semua Peran</option>
+                <option value="admin">Administrator</option>
+                <option value="pemda">Pemerintah</option>
+                <option value="distributor">Distributor</option>
+                <option value="pedagang">Pedagang</option>
+                <option value="petani">Petani</option>
+                <option value="masyarakat">Masyarakat</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" id="usersTable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nama Pengguna</th>
+                  <th>Email</th>
+                  <th>Peran / Role</th>
+                  <th>Wilayah / Kios</th>
+                  <th>Status Akun</th>
+                  <th>Tanggal Terdaftar</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. DATA KOMODITAS ================= -->
+      <section id="data-komoditas" class="view-section">
+        <div class="view-header">
+          <div>
+            <h2 class="page-title">Master Data Komoditas Pangan Pokok</h2>
+            <p class="page-subtitle">Katalog bahan pangan strategis yang dipantau dalam sistem ketahanan pangan.</p>
+          </div>
+          <button class="btn btn-primary" id="btnOpenCommodityModal"><i class="fa-solid fa-plus"></i> Tambah Komoditas</button>
+        </div>
+
+        <div class="card">
+          <div class="table-filter-bar">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="commoditySearchInput" placeholder="Cari komoditas atau kategori...">
+            </div>
+            <div class="filter-controls">
+              <select id="commodityCategoryFilter" class="form-select" aria-label="Filter Kategori Komoditas">
+                <option value="all">Semua Kategori</option>
+                <option value="Biji-bijian & Karbohidrat">Biji-bijian & Karbohidrat</option>
+                <option value="Bumbu & Hortikultura">Bumbu & Hortikultura</option>
+                <option value="Minyak & Gula">Minyak & Gula</option>
+                <option value="Protein Hewani">Protein Hewani</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Kode</th>
+                  <th>Nama Komoditas</th>
+                  <th>Kategori</th>
+                  <th>Satuan</th>
+                  <th>Harga Acuan (HAP)</th>
+                  <th>Batas Minimum Cadangan</th>
+                  <th>Terakhir Diperbarui</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="commodityTableBody">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 5. MONITORING STOK PANGAN ================= -->
+      <section id="pemantauan-stok" class="view-section">
+        <div class="view-header">
+          <div>
+            <h2 class="page-title">Monitoring Stok Pangan Real-Time</h2>
+            <p class="page-subtitle">Ketersediaan pasokan komoditas di tingkat pasar rakyat, gudang distributor, dan lumbung pangan.</p>
+          </div>
+          <button class="btn btn-primary" id="btnOpenStockModal"><i class="fa-solid fa-pen-to-square"></i> Update Data Stok</button>
+        </div>
+
+        <div class="card">
+          <div class="table-filter-bar">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="stockSearchInput" placeholder="Cari pasar, komoditas, atau lokasi...">
+            </div>
+            <div class="filter-controls">
+              <select id="stockStatusFilter" class="form-select" aria-label="Filter Status Stok">
+                <option value="all">Semua Status Stok</option>
+                <option value="Aman">Stok Aman</option>
+                <option value="Menipis">Stok Menipis (Waspada)</option>
+                <option value="Kritis">Stok Kritis / Defisit</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Komoditas</th>
+                  <th>Lokasi / Fasilitas</th>
+                  <th>Kategori Lokasi</th>
+                  <th>Jumlah Stok</th>
+                  <th>Status Pasokan</th>
+                  <th>Ketahanan (Hari)</th>
+                  <th>Pembaruan Terakhir</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="stockTableBody">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 6. INFORMASI HARGA PANGAN ================= -->
+      <section id="informasi-harga" class="view-section">
+        <div class="view-header">
+          <div>
+            <h2 class="page-title">Informasi & Komparasi Harga Pangan</h2>
+            <p class="page-subtitle">Daftar harga bahan pokok harian, disparitas harga antar pasar, dan grafik fluktuasi.</p>
+          </div>
+          <button class="btn btn-primary" id="btnOpenPriceModal"><i class="fa-solid fa-file-invoice-dollar"></i> Input Harga Harian</button>
+        </div>
+
+        <!-- Comparative Price Overview -->
+        <div class="price-cards-carousel" id="priceCardsContainer">
+          <!-- Populated via JS -->
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-scale-balanced"></i> Tabel Komparasi Harga Lintas Pasar Tradisional</h3>
+            <span class="card-sub">Harga rata-rata konsumen eceran (Rp/Kg)</span>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Bahan Pangan</th>
+                  <th>Pasar Pasir Gintung</th>
+                  <th>Pasar Kangkung</th>
+                  <th>Pasar Tamin</th>
+                  <th>Pasar Way Halim</th>
+                  <th>Rata-rata Kota</th>
+                  <th>Perubahan (24 Jam)</th>
+                </tr>
+              </thead>
+              <tbody id="priceComparisonTableBody">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 7. PETA GIS INTERAKTIF ================= -->
+      <section id="peta-gis" class="view-section">
+        <div class="view-header">
+          <div>
+            <h2 class="page-title">Pemetaan Geografis Pangan (GIS PostGIS)</h2>
+            <p class="page-subtitle">Visualisasi spasial lokasi pasar rakyat, gudang distribusi pangan, dan sentra produksi petani.</p>
+          </div>
+          <div class="gis-legend-badges">
+            <span class="legend-badge market"><i class="fa-solid fa-shop"></i> Pasar Rakyat</span>
+            <span class="legend-badge distributor"><i class="fa-solid fa-warehouse"></i> Distributor/Gudang</span>
+            <span class="legend-badge farmer"><i class="fa-solid fa-tractor"></i> Sentra Tani/Lumbung</span>
+          </div>
+        </div>
+
+        <div class="card gis-map-card">
+          <div class="gis-controls-bar">
+            <div class="search-box">
+              <i class="fa-solid fa-location-crosshairs"></i>
+              <input type="text" id="mapSearchInput" placeholder="Cari nama lokasi pasar atau sentra tani...">
+            </div>
+            <div class="filter-controls">
+              <button class="btn btn-outline btn-sm" id="btnFilterMapMarket"><i class="fa-solid fa-shop"></i> Hanya Pasar</button>
+              <button class="btn btn-outline btn-sm" id="btnFilterMapDist"><i class="fa-solid fa-warehouse"></i> Hanya Gudang</button>
+              <button class="btn btn-outline btn-sm" id="btnFilterMapAll"><i class="fa-solid fa-globe"></i> Tampilkan Semua</button>
+            </div>
+          </div>
+
+          <!-- Leaflet Map Canvas Container -->
+          <div id="gisMap" class="gis-map-canvas" style="position: relative; min-height: 500px; width: 100%;"></div>
+          
+          <div class="map-status-footer">
+            <span><i class="fa-solid fa-circle-check text-emerald-700"></i> Koordinat tersinkronisasi dengan ekstensi PostgreSQL PostGIS</span>
+            <span id="mapEntityCountInfo">Menampilkan 8 titik simpul pangan</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 8. PREDIKSI KEBUTUHAN PANGAN (AI ENGINE) ================= -->
+      <section id="prediksi-pangan" class="view-section">
+        <div class="view-header">
+          <div>
+            <h2 class="page-title">Prediksi Kebutuhan & Analisis Risiko Kelangkaan (AI)</h2>
+            <p class="page-subtitle">Model peramalan kecerdasan buatan berbasis data historis stok, tren harga, dan musim panen.</p>
+          </div>
+          <button class="btn btn-primary" id="btnRunPrediction"><i class="fa-solid fa-wand-magic-sparkles"></i> Jalankan Simulasi AI</button>
+        </div>
+
+        <!-- AI Alert Cards -->
+        <div class="ai-alert-banner warning">
+          <div class="ai-banner-icon"><i class="fa-solid fa-bell-concierge"></i></div>
+          <div class="ai-banner-text">
+            <h4>Peringatan Dini: Potensi Defisit Cabai Rawit Merah (14 Hari ke Depan)</h4>
+            <p>Berdasarkan tren konsumsi menjelang akhir pekan dan pasokan panen, stok Cabai Rawit diprediksi berkurang 28%. Disarankan percepatan distribusi dari sentra tani Tanggamus.</p>
+          </div>
+          <button class="btn btn-sm btn-dark" onclick="openDispatchModal('Cabai Rawit Merah')">Rekomendasi Distribusi</button>
+        </div>
+
+        <div class="dashboard-charts-grid">
+          <div class="card chart-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3><i class="fa-solid fa-chart-area"></i> Proyeksi Kebutuhan vs Pasokan Beras 30 Hari</h3>
+                <span class="card-sub">Model Machine Learning Time-Series Forecaster</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="chart-wrapper">
+                <canvas id="predictionChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-shield-virus"></i> Matriks Risiko Ketahanan Pangan Komoditas</h3>
+            </div>
+            <div class="card-body table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Komoditas</th>
+                    <th>Tingkat Risiko</th>
+                    <th>Prediksi Permintaan</th>
+                    <th>Kebutuhan Intervensi</th>
+                  </tr>
+                </thead>
+                <tbody id="aiRiskTableBody">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 9. TRACKING DISTRIBUSI PANGAN ================= -->
+      <section id="tracking-distribusi" class="view-section">
+        <div class="view-header">
+          <div>
+            <h2 class="page-title">Tracking Distribusi & Logistik Pangan</h2>
+            <p class="page-subtitle">Pemantauan surat jalan pengiriman dari distributor ke pasar dan pengecer.</p>
+          </div>
+          <button class="btn btn-primary" id="btnOpenDistributionModal"><i class="fa-solid fa-truck-ramp-box"></i> Buat Surat Jalan (DO)</button>
+        </div>
+
+        <div class="card">
+          <div class="table-filter-bar">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="distSearchInput" placeholder="Cari No. DO, distributor, atau tujuan...">
+            </div>
+            <div class="filter-controls">
+              <select id="distStatusFilter" class="form-select" aria-label="Filter Status Distribusi">
+                <option value="all">Semua Status Pengiriman</option>
+                <option value="Menunggu Pengiriman">Menunggu Pengiriman</option>
+                <option value="Dalam Perjalanan">Dalam Perjalanan</option>
+                <option value="Tiba di Lokasi">Tiba di Lokasi</option>
+                <option value="Selesai / Diterima">Selesai / Diterima</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>No. Pengiriman (DO)</th>
+                  <th>Distributor / Pengirim</th>
+                  <th>Komoditas</th>
+                  <th>Volume</th>
+                  <th>Asal & Tujuan</th>
+                  <th>Armada / Supir</th>
+                  <th>Status Pengiriman</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="distributionTableBody">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 10. PRODUKSI PETANI / PRODUSEN ================= -->
+      <section id="produksi-petani" class="view-section">
+        <div class="view-header">
+          <div>
+            <h2 class="page-title">Hasil Produksi & Panen Petani</h2>
+            <p class="page-subtitle">Pencatatan hasil panen pertanian dan penawaran pasokan kepada distributor resmi.</p>
+          </div>
+          <button class="btn btn-primary" id="btnOpenHarvestModal"><i class="fa-solid fa-seedling"></i> Catat Hasil Panen Baru</button>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:#e8f5e9; color:#004e34;"><i class="fa-solid fa-wheat-awn"></i></div>
+            <div class="kpi-info">
+              <div class="kpi-value">48.5 Ton</div>
+              <div class="kpi-label">Total Panen Tersedia</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:#eff6ff; color:#2563eb;"><i class="fa-solid fa-handshake"></i></div>
+            <div class="kpi-info">
+              <div class="kpi-value">6 Kontrak</div>
+              <div class="kpi-label">Permintaan Distributor</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:#fef3c7; color:#b45309;"><i class="fa-solid fa-boxes-packing"></i></div>
+            <div class="kpi-info">
+              <div class="kpi-value">3 Lokasi</div>
+              <div class="kpi-label">Lumbung Pangan Petani</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-tractor"></i> Daftar Panen Siap Disalurkan</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID Batch</th>
+                  <th>Komoditas</th>
+                  <th>Kelompok Tani</th>
+                  <th>Volume Panen</th>
+                  <th>Tanggal Panen</th>
+                  <th>Harga Penawaran</th>
+                  <th>Status Penyerapan</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="farmerTableBody">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 11. PUSAT NOTIFIKASI ================= -->
+      <section id="notifikasi" class="view-section">
+        <div class="view-header">
+          <div>
+            <h2 class="page-title">Pusat Notifikasi & Peringatan Otomatis</h2>
+            <p class="page-subtitle">Sistem peringatan otomatis batas stok minimum, lonjakan harga signifikan, dan status logistik.</p>
+          </div>
+          <button class="btn btn-outline" id="btnPageMarkAllRead"><i class="fa-solid fa-check-double"></i> Tandai Semua Selesai Dibaca</button>
+        </div>
+
+        <div class="card">
+          <div class="notif-full-list" id="notifFullContainer">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 12. LAPORAN & REKAPITULASI ================= -->
+      <section id="laporan-pangan" class="view-section">
+        <div class="view-header">
+          <div>
+            <h2 class="page-title">Laporan & Rekapitulasi Ketahanan Pangan</h2>
+            <p class="page-subtitle">Laporan resmi untuk Pemerintah Daerah dan instansi pengambil kebijakan pangan.</p>
+          </div>
+          <div class="report-export-buttons">
+            <button class="btn btn-outline" onclick="window.print()"><i class="fa-solid fa-print"></i> Cetak Laporan</button>
+            <button class="btn btn-primary" id="btnExportCSV"><i class="fa-solid fa-file-csv"></i> Ekspor CSV / Excel</button>
+          </div>
+        </div>
+
+        <div class="card report-filter-card">
+          <div class="report-filters">
+            <div class="form-group">
+              <label for="reportPeriodSelect">Periode Waktu:</label>
+              <select id="reportPeriodSelect" class="form-select">
+                <option value="mingguan">Minggu Ini (7 Hari Terakhir)</option>
+                <option value="bulanan">Bulan Ini (November 2026)</option>
+                <option value="triwulan">Triwulan IV (Okt - Des 2026)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="reportMarketSelect">Wilayah / Fasilitas:</label>
+              <select id="reportMarketSelect" class="form-select">
+                <option value="all">Semua Pasar & Gudang Regional</option>
+                <option value="Pasar Pasir Gintung">Pasar Pasir Gintung</option>
+                <option value="Pasar Kangkung">Pasar Kangkung</option>
+                <option value="Pasar Tamin">Pasar Tamin</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>&nbsp;</label>
+              <button class="btn btn-primary" id="btnGenerateReport"><i class="fa-solid fa-filter"></i> Terapkan Filter</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card report-preview-paper">
+          <div class="report-header-formal">
+            <div class="formal-logos">
+              <span class="tag-pemda">PEMDA KETAHANAN PANGAN</span>
+              <span class="tag-uti">UNIVERSITAS TEKNOKRAT INDONESIA</span>
+            </div>
+            <h2 class="formal-title">REKAPITULASI KONDISI DISTRIBUSI PANGAN DAERAH</h2>
+            <p class="formal-sub">Sistem Digital Smart City FoodSupply – Periode Pelaporan: <strong>November 2026</strong></p>
+            <div class="formal-line"></div>
+          </div>
+
+          <div class="report-kpi-summary">
+            <div class="report-kpi-box">
+              <span>Rata-Rata Ketersediaan:</span>
+              <strong>89.4% (Kategori Stabil)</strong>
+            </div>
+            <div class="report-kpi-box">
+              <span>Komoditas Defisit:</span>
+              <strong class="text-rose-700">1 (Cabai Rawit Merah)</strong>
+            </div>
+            <div class="report-kpi-box">
+              <span>Distribusi Tersalurkan:</span>
+              <strong>142.8 Ton</strong>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" id="reportSummaryTable">
+              <thead>
+                <tr>
+                  <th>Komoditas</th>
+                  <th>Stok Masuk</th>
+                  <th>Stok Terjual</th>
+                  <th>Sisa Pasokan</th>
+                  <th>Rata-rata Harga</th>
+                  <th>Status Indeks Risiko</th>
+                </tr>
+              </thead>
+              <tbody id="reportTableBody">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Spacer for Mobile Bottom Nav -->
+      <div class="mobile-bottom-spacer"></div>
+
+    </main>
+  </div>
+
+  <!-- ================= BOTTOM NAVIGATION BAR (KHUSUS MOBILE < 768px) ================= -->
+  <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Navigasi Bawah Seluler">
+    <button class="bottom-nav-item active" data-tab="dashboard" aria-label="Dashboard">
+      <i class="fa-solid fa-chart-pie"></i>
+      <span>Beranda</span>
+    </button>
+    <button class="bottom-nav-item" data-tab="pemantauan-stok" aria-label="Monitoring Stok">
+      <i class="fa-solid fa-boxes-stacked"></i>
+      <span>Stok</span>
+    </button>
+    <button class="bottom-nav-item" data-tab="informasi-harga" aria-label="Informasi Harga">
+      <i class="fa-solid fa-tags"></i>
+      <span>Harga</span>
+    </button>
+    <button class="bottom-nav-item" data-tab="peta-gis" aria-label="Peta GIS">
+      <i class="fa-solid fa-map-location-dot"></i>
+      <span>Peta GIS</span>
+    </button>
+    <button class="bottom-nav-item" id="mobileMenuDrawerBtn" aria-label="Buka Menu Lainnya">
+      <i class="fa-solid fa-bars-staggered"></i>
+      <span>Lainnya</span>
+    </button>
+  </nav>
+
+  <!-- ================= MODALS (FORMS) ================= -->
+
+  <!-- Modal 1: Login / Akun -->
+  <div class="modal" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="authModalTitle"><i class="fa-solid fa-right-to-bracket"></i> Masuk ke FoodSupply</h3>
+          <button class="close-modal-btn" aria-label="Tutup Modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="auth-tabs">
+            <button class="auth-tab-btn active" id="tabBtnLogin">Masuk (Login)</button>
+            <button class="auth-tab-btn" id="tabBtnRegister">Daftar Akun Baru</button>
+          </div>
+
+          <!-- Form Login -->
+          <form id="loginForm" class="auth-form active">
+            <div class="form-group">
+              <label for="loginEmail">Email Pengguna</label>
+              <input type="email" id="loginEmail" class="form-input" placeholder="contoh: admin@foodsupply.go.id" required value="admin@foodsupply.go.id">
+            </div>
+            <div class="form-group">
+              <label for="loginPassword">Kata Sandi</label>
+              <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required value="rahasia123">
+            </div>
+            <div class="form-group">
+              <label for="loginRoleSelect">Masuk Sebagai Peran:</label>
+              <select id="loginRoleSelect" class="form-select">
+                <option value="admin">Administrator Sistem</option>
+                <option value="pemda">Pemerintah Daerah (Pemda)</option>
+                <option value="distributor">Distributor Pangan</option>
+                <option value="pedagang">Pedagang Pasar Tradisional</option>
+                <option value="petani">Petani / Kelompok Tani</option>
+                <option value="masyarakat">Masyarakat Umum</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block"><i class="fa-solid fa-lock-open"></i> Masuk Sekarang</button>
+          </form>
+
+          <!-- Form Register -->
+          <form id="registerForm" class="auth-form">
+            <div class="form-group">
+              <label for="regName">Nama Lengkap</label>
+              <input type="text" id="regName" class="form-input" placeholder="Nama lengkap Anda" required>
+            </div>
+            <div class="form-group">
+              <label for="regEmail">Email</label>
+              <input type="email" id="regEmail" class="form-input" placeholder="email@domain.com" required>
+            </div>
+            <div class="form-group">
+              <label for="regRole">Kategori Akun</label>
+              <select id="regRole" class="form-select" required>
+                <option value="masyarakat">Masyarakat</option>
+                <option value="pedagang">Pedagang Pasar</option>
+                <option value="petani">Petani / Produsen</option>
+                <option value="distributor">Distributor Pangan</option>
+                <option value="pemda">Pemerintah Daerah</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="regPassword">Kata Sandi</label>
+              <input type="password" id="regPassword" class="form-input" placeholder="Minimal 8 karakter" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block"><i class="fa-solid fa-user-plus"></i> Daftarkan Akun</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Form Tambah Pengguna (Admin) -->
+  <div class="modal" id="userFormModal" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="userModalTitle"><i class="fa-solid fa-user-plus"></i> Tambah Pengguna Sistem</h3>
+          <button class="close-modal-btn" aria-label="Tutup Modal">&times;</button>
+        </div>
+        <form id="addUserForm">
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="newUserName">Nama Pengguna</label>
+              <input type="text" id="newUserName" class="form-input" required placeholder="Nama lengkap">
+            </div>
+            <div class="form-group">
+              <label for="newUserEmail">Alamat Email</label>
+              <input type="email" id="newUserEmail" class="form-input" required placeholder="user@foodsupply.id">
+            </div>
+            <div class="form-group">
+              <label for="newUserRole">Hak Akses / Peran</label>
+              <select id="newUserRole" class="form-select" required>
+                <option value="admin">Administrator</option>
+                <option value="pemda">Pemerintah Daerah (Pemda)</option>
+                <option value="distributor">Distributor</option>
+                <option value="pedagang">Pedagang</option>
+                <option value="petani">Petani / Produsen</option>
+                <option value="masyarakat">Masyarakat</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="newUserRegion">Wilayah / Penugasan</label>
+              <input type="text" id="newUserRegion" class="form-input" placeholder="contoh: Pasar Pasir Gintung / Lampung">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary close-modal-btn">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan Pengguna</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Form Tambah Komoditas -->
+  <div class="modal" id="commodityFormModal" role="dialog" aria-modal="true" aria-labelledby="commModalTitle">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="commModalTitle"><i class="fa-solid fa-wheat-awn"></i> Tambah Komoditas Pangan</h3>
+          <button class="close-modal-btn" aria-label="Tutup Modal">&times;</button>
+        </div>
+        <form id="addCommodityForm">
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="commName">Nama Komoditas</label>
+              <input type="text" id="commName" class="form-input" placeholder="contoh: Kedelai Impor" required>
+            </div>
+            <div class="form-group">
+              <label for="commCategory">Kategori Bahan Pangan</label>
+              <select id="commCategory" class="form-select" required>
+                <option value="Biji-bijian & Karbohidrat">Biji-bijian & Karbohidrat</option>
+                <option value="Bumbu & Hortikultura">Bumbu & Hortikultura</option>
+                <option value="Minyak & Gula">Minyak & Gula</option>
+                <option value="Protein Hewani">Protein Hewani</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="commUnit">Satuan Pengukuran</label>
+              <select id="commUnit" class="form-select" required>
+                <option value="Kg">Kilogram (Kg)</option>
+                <option value="Liter">Liter (L)</option>
+                <option value="Ton">Ton</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="commHap">Harga Acuan Penjualan (HAP) Rp</label>
+              <input type="number" id="commHap" class="form-input" placeholder="contoh: 14000" required>
+            </div>
+            <div class="form-group">
+              <label for="commMinStock">Batas Minimum Cadangan Aman (Ton)</label>
+              <input type="number" id="commMinStock" class="form-input" placeholder="contoh: 50" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary close-modal-btn">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan Komoditas</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Form Update Stok -->
+  <div class="modal" id="stockFormModal" role="dialog" aria-modal="true" aria-labelledby="stockModalTitle">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="stockModalTitle"><i class="fa-solid fa-boxes-stacked"></i> Perbarui Ketersediaan Stok</h3>
+          <button class="close-modal-btn" aria-label="Tutup Modal">&times;</button>
+        </div>
+        <form id="updateStockForm">
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="stockCommSelect">Pilih Komoditas</label>
+              <select id="stockCommSelect" class="form-select" required>
+                <!-- Populated via JS -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="stockMarketSelect">Lokasi Pasar / Gudang</label>
+              <select id="stockMarketSelect" class="form-select" required>
+                <option value="Pasar Pasir Gintung">Pasar Pasir Gintung</option>
+                <option value="Pasar Kangkung">Pasar Kangkung</option>
+                <option value="Pasar Tamin">Pasar Tamin</option>
+                <option value="Pasar Way Halim">Pasar Way Halim</option>
+                <option value="Gudang Bulog Divre Lampung">Gudang Bulog Divre Lampung</option>
+                <option value="Gudang PT Pangan Sejahtera">Gudang PT Pangan Sejahtera</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="stockQuantityInput">Jumlah Stok Terkini (Ton)</label>
+              <input type="number" step="0.1" id="stockQuantityInput" class="form-input" required placeholder="Volume stok">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary close-modal-btn">Batal</button>
+            <button type="submit" class="btn btn-primary">Perbarui Stok</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 5: Form Input Harga Harian -->
+  <div class="modal" id="priceFormModal" role="dialog" aria-modal="true" aria-labelledby="priceModalTitle">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="priceModalTitle"><i class="fa-solid fa-tags"></i> Input / Perbarui Harga Bahan Pangan</h3>
+          <button class="close-modal-btn" aria-label="Tutup Modal">&times;</button>
+        </div>
+        <form id="updatePriceForm">
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="priceCommSelect">Komoditas Pangan</label>
+              <select id="priceCommSelect" class="form-select" required>
+                <!-- Populated via JS -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="priceMarketSelect">Pasar Tradisional</label>
+              <select id="priceMarketSelect" class="form-select" required>
+                <option value="Pasar Pasir Gintung">Pasar Pasir Gintung</option>
+                <option value="Pasar Kangkung">Pasar Kangkung</option>
+                <option value="Pasar Tamin">Pasar Tamin</option>
+                <option value="Pasar Way Halim">Pasar Way Halim</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="priceValueInput">Harga Konsumen Hari Ini (Rp / Kg atau Liter)</label>
+              <input type="number" id="priceValueInput" class="form-input" placeholder="contoh: 15500" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary close-modal-btn">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan Harga</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 6: Form Buat Surat Jalan Distribusi -->
+  <div class="modal" id="distributionFormModal" role="dialog" aria-modal="true" aria-labelledby="distModalTitle">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="distModalTitle"><i class="fa-solid fa-truck-fast"></i> Buat Surat Jalan Distribusi (DO)</h3>
+          <button class="close-modal-btn" aria-label="Tutup Modal">&times;</button>
+        </div>
+        <form id="createDistributionForm">
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="doDistributor">Distributor / Pengirim</label>
+              <input type="text" id="doDistributor" class="form-input" value="PT Pangan Sejahtera Lampung" required>
+            </div>
+            <div class="form-group">
+              <label for="doCommoditySelect">Komoditas yang Dikirim</label>
+              <select id="doCommoditySelect" class="form-select" required>
+                <!-- Populated via JS -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="doQuantity">Jumlah Volume (Ton / Kg)</label>
+              <input type="number" step="0.1" id="doQuantity" class="form-input" placeholder="Volume pengiriman" required>
+            </div>
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="doOrigin">Lokasi Asal</label>
+                <input type="text" id="doOrigin" class="form-input" value="Gudang Induk Panjang" required>
+              </div>
+              <div class="form-group">
+                <label for="doDestination">Lokasi Tujuan</label>
+                <input type="text" id="doDestination" class="form-input" value="Pasar Pasir Gintung" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="doStatus">Status Distribusi</label>
+              <select id="doStatus" class="form-select">
+                <option value="Menunggu Pengiriman">Menunggu Pengiriman</option>
+                <option value="Dalam Perjalanan">Dalam Perjalanan</option>
+                <option value="Tiba di Lokasi">Tiba di Lokasi</option>
+                <option value="Selesai / Diterima">Selesai / Diterima</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary close-modal-btn">Batal</button>
+            <button type="submit" class="btn btn-primary">Terbitkan Pengiriman</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 7: Form Panen Petani -->
+  <div class="modal" id="harvestFormModal" role="dialog" aria-modal="true" aria-labelledby="harvestModalTitle">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="harvestModalTitle"><i class="fa-solid fa-seedling"></i> Catat Hasil Panen Petani</h3>
+          <button class="close-modal-btn" aria-label="Tutup Modal">&times;</button>
+        </div>
+        <form id="createHarvestForm">
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="harvestFarmerName">Kelompok Tani / Produsen</label>
+              <input type="text" id="harvestFarmerName" class="form-input" value="Kelompok Tani Harapan Jaya" required>
+            </div>
+            <div class="form-group">
+              <label for="harvestCommoditySelect">Komoditas Hasil Panen</label>
+              <select id="harvestCommoditySelect" class="form-select" required>
+                <!-- Populated via JS -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="harvestVolume">Volume Panen Siap Pasok (Ton)</label>
+              <input type="number" step="0.1" id="harvestVolume" class="form-input" placeholder="contoh: 12.5" required>
+            </div>
+            <div class="form-group">
+              <label for="harvestPrice">Harga Penawaran Petani (Rp/Kg)</label>
+              <input type="number" id="harvestPrice" class="form-input" placeholder="contoh: 11500" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary close-modal-btn">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan Data Panen</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 8: Arsitektur Sistem (Rust + PostgreSQL) -->
+  <div class="modal" id="systemInfoModal" role="dialog" aria-modal="true" aria-labelledby="sysModalTitle">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="sysModalTitle"><i class="fa-solid fa-server"></i> Arsitektur Sistem FoodSupply</h3>
+          <button class="close-modal-btn" aria-label="Tutup Modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="tech-spec-badge-row">
+            <span class="tech-badge rust"><i class="fa-brands fa-rust"></i> Rust (Axum + Tokio + SQLx)</span>
+            <span class="tech-badge pg"><i class="fa-solid fa-database"></i> PostgreSQL + PostGIS</span>
+            <span class="tech-badge security"><i class="fa-solid fa-shield-halved"></i> JWT + Argon2</span>
+          </div>
+          <h4>1. Backend Rust Axum</h4>
+          <p>Mengelola REST API berkinerja tinggi, asynchronous runtime Tokio, validasi schema serialisasi Serde, dan proteksi otentikasi berbasis JWT.</p>
+          <h4>2. Database PostgreSQL & PostGIS</h4>
+          <p>Mendukung 7 tabel relasional terstruktur (<code>Users</code>, <code>Commodities</code>, <code>Markets</code>, <code>Stocks</code>, <code>Prices</code>, <code>Distributions</code>, <code>Notifications</code>) serta query spasial GIS untuk perhitungan jarak pasar terdekat.</p>
+          <h4>3. Pengembang & Pembimbing</h4>
+          <p><strong>Pengembang:</strong> Yolanda Anderi<br><strong>Dosen Pembimbing:</strong> Dr. Erliyan Redy Susanto, M.Kom<br><strong>Institusi:</strong> Universitas Teknokrat Indonesia (2026)</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary close-modal-btn">Tutup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TOAST CONTAINER ================= -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- ================= MANDATORY FOOTER (SEMUA HALAMAN) ================= -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <div class="footer-info">
+        <div class="footer-badges">
+          <span class="badge-mini"><i class="fa-solid fa-city"></i> Smart City</span>
+          <span class="badge-mini"><i class="fa-brands fa-rust"></i> Rust Axum</span>
+          <span class="badge-mini"><i class="fa-solid fa-database"></i> PostgreSQL PostGIS</span>
+        </div>
+        <p class="footer-copyright">
+          <strong>Copyright©2026 by Yolanda Anderi dan Dr. Erliyan Redy Susanto, M.Kom</strong>
+        </p>
+      </div>
+      <div class="footer-academic">
+        <span>Universitas Teknokrat Indonesia &bull; Dinas Ketahanan Pangan Pemda</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================= SCRIPTS ================= -->
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Leaflet JS CDN for GIS Mapping -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Main Application Script -->
+  <script src="main.js"></script>
+</body>
+</html>
